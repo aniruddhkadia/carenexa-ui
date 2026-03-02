@@ -21,6 +21,9 @@ import {
 import Button from "../../components/common/Button";
 import Card from "../../components/common/Card";
 import api from "../../lib/axios";
+import ViewMedicalRecordModal from "../medical-records/ViewMedicalRecordModal";
+import { type MedicalRecordDto } from "../medical-records/medicalRecords.api";
+import PatientRegistrationForm from "./PatientRegistrationForm";
 
 interface PatientProfile {
   id: string;
@@ -34,15 +37,8 @@ interface PatientProfile {
   bloodGroup: string;
   insuranceId?: string;
   createdAt: string;
-}
-
-interface VisitRecord {
-  id: string;
-  doctorName: string;
-  diagnosis: string;
-  prescription: string;
-  labNotes?: string;
-  createdAt: string;
+  totalVisits: number;
+  successRate: string;
 }
 
 const PatientProfilePage: React.FC = () => {
@@ -51,21 +47,30 @@ const PatientProfilePage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<
     "history" | "appointments" | "billing"
   >("history");
+  const [selectedRecord, setSelectedRecord] = useState<MedicalRecordDto | null>(
+    null,
+  );
+  const [isEditing, setIsEditing] = useState(false);
 
-  const { data: patient, isLoading: isPatientLoading } =
-    useQuery<PatientProfile>({
-      queryKey: ["patient", id],
-      queryFn: async () => {
-        const { data } = await api.get(`/patients/${id}`);
-        return data;
-      },
-    });
+  const {
+    data: patient,
+    isLoading: isPatientLoading,
+    refetch: refetchPatient,
+  } = useQuery<PatientProfile>({
+    queryKey: ["patient", id],
+    queryFn: async () => {
+      const { data } = await api.get(`/patients/${id}`);
+      return data;
+    },
+  });
 
-  const { data: visits, isLoading: isVisitsLoading } = useQuery<VisitRecord[]>({
+  const { data: visits, isLoading: isVisitsLoading } = useQuery<
+    MedicalRecordDto[]
+  >({
     queryKey: ["patient-visits", id],
     queryFn: async () => {
       // Use the correct endpoint for medical records
-      const { data } = await api.get(`/MedicalRecords/patient/${id}`);
+      const { data } = await api.get(`/MedicalRecords/${id}/history`);
       return data;
     },
     enabled: !!id && activeTab === "history",
@@ -73,7 +78,7 @@ const PatientProfilePage: React.FC = () => {
 
   if (isPatientLoading) {
     return (
-      <div className="space-y-6 animate-pulse">
+      <div className="space-y-4 animate-pulse">
         <div className="h-8 w-48 bg-slate-200 rounded-xl" />
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="h-96 bg-slate-200 rounded-3xl" />
@@ -89,7 +94,7 @@ const PatientProfilePage: React.FC = () => {
   const age = new Date().getFullYear() - new Date(patient.dob).getFullYear();
 
   return (
-    <div className="space-y-6 pb-20">
+    <div className="space-y-4 pb-20">
       <div className="flex items-center space-x-4">
         <Button
           variant="ghost"
@@ -115,7 +120,7 @@ const PatientProfilePage: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Sidebar Info */}
-        <div className="space-y-6">
+        <div className="space-y-4">
           <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden p-0">
             <div className="bg-primary h-24 relative">
               <div className="absolute -bottom-10 left-6 w-20 h-20 rounded-2xl bg-white dark:bg-slate-900 border-4 border-white dark:border-slate-900 shadow-lg flex items-center justify-center">
@@ -150,11 +155,18 @@ const PatientProfilePage: React.FC = () => {
               </div>
 
               <div className="pt-4 flex flex-col gap-2">
-                <Button className="w-full rounded-xl">
+                <Button
+                  className="w-full rounded-xl"
+                  onClick={() => navigate(`/medical-records/${id}`)}
+                >
                   <Plus size={16} className="mr-2" />
                   New Visit
                 </Button>
-                <Button variant="outline" className="w-full rounded-xl">
+                <Button
+                  variant="outline"
+                  className="w-full rounded-xl"
+                  onClick={() => setIsEditing(true)}
+                >
                   Edit Profile
                 </Button>
               </div>
@@ -170,20 +182,24 @@ const PatientProfilePage: React.FC = () => {
                 <p className="text-[10px] font-bold text-blue-600 uppercase">
                   Total Visits
                 </p>
-                <p className="text-xl font-bold text-blue-700">12</p>
+                <p className="text-xl font-bold text-blue-700">
+                  {patient.totalVisits || 0}
+                </p>
               </div>
               <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20">
                 <p className="text-[10px] font-bold text-emerald-600 uppercase">
-                  Success Rate
+                  Health Score
                 </p>
-                <p className="text-xl font-bold text-emerald-700">98%</p>
+                <p className="text-xl font-bold text-emerald-700">
+                  {patient.successRate || "98%"}
+                </p>
               </div>
             </div>
           </Card>
         </div>
 
         {/* Main Tabs Container */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-4">
           <div className="flex p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl w-fit">
             {[
               {
@@ -234,7 +250,11 @@ const PatientProfilePage: React.FC = () => {
                   <div className="p-20 bg-white dark:bg-slate-800 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center text-slate-400">
                     <Activity size={48} className="mb-4 opacity-20" />
                     <p className="font-bold">No visit history found.</p>
-                    <Button variant="ghost" className="mt-2 text-primary">
+                    <Button
+                      variant="ghost"
+                      className="mt-2 text-primary"
+                      onClick={() => navigate(`/medical-records/${id}`)}
+                    >
                       Start first visit
                     </Button>
                   </div>
@@ -269,7 +289,8 @@ const PatientProfilePage: React.FC = () => {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100"
+                            onClick={() => setSelectedRecord(visit)}
+                            className="h-9 w-9 p-0 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-primary hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                           >
                             <Eye size={16} />
                           </Button>
@@ -290,7 +311,29 @@ const PatientProfilePage: React.FC = () => {
                               Prescription
                             </div>
                             <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed truncate">
-                              {visit.prescription}
+                              {(() => {
+                                try {
+                                  if (!visit.prescription) return "None";
+                                  const parsed = JSON.parse(visit.prescription);
+                                  if (
+                                    Array.isArray(parsed) &&
+                                    parsed.length > 0
+                                  ) {
+                                    return parsed
+                                      .map(
+                                        (p: any) =>
+                                          p.medicineObj?.brandName ||
+                                          p.brandName ||
+                                          "Medicine",
+                                      )
+                                      .filter(Boolean)
+                                      .join(", ");
+                                  }
+                                  return visit.prescription;
+                                } catch (e) {
+                                  return visit.prescription;
+                                }
+                              })()}
                             </p>
                           </div>
                         </div>
@@ -316,6 +359,28 @@ const PatientProfilePage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {selectedRecord && (
+        <ViewMedicalRecordModal
+          record={selectedRecord}
+          onClose={() => setSelectedRecord(null)}
+        />
+      )}
+
+      {isEditing && (
+        <div className="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-2xl bg-white dark:bg-slate-800 rounded-3xl overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto">
+            <PatientRegistrationForm
+              patientId={id}
+              onSuccess={() => {
+                setIsEditing(false);
+                refetchPatient();
+              }}
+              onCancel={() => setIsEditing(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -5,7 +5,12 @@ import * as z from "zod";
 import Button from "../../components/common/Button";
 import Input from "../../components/common/Input";
 import Card from "../../components/common/Card";
+import BloodGroupSelect, {
+  BLOOD_GROUPS,
+} from "../../components/common/BloodGroupSelect";
 import api from "../../lib/axios";
+import { useQuery } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 
 const patientSchema = z.object({
   firstName: z.string().min(2, "First name is required"),
@@ -16,7 +21,10 @@ const patientSchema = z.object({
     message: "Invalid date",
   }),
   gender: z.string().min(1, "Gender is required"),
-  bloodGroup: z.string().optional(),
+  bloodGroup: z
+    .enum(BLOOD_GROUPS as unknown as [string, ...string[]])
+    .optional()
+    .or(z.literal("")),
   chiefComplaint: z.string().optional(),
   address: z.string().min(5, "Address is required"),
 });
@@ -24,22 +32,34 @@ const patientSchema = z.object({
 type PatientFormValues = z.infer<typeof patientSchema>;
 
 interface PatientRegistrationFormProps {
+  patientId?: string;
   onSuccess?: () => void;
   onCancel?: () => void;
 }
 
 const PatientRegistrationForm: React.FC<PatientRegistrationFormProps> = ({
+  patientId,
   onSuccess,
   onCancel,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
-  const [serverError, setServerError] = useState("");
   const [calculatedAge, setCalculatedAge] = useState<number | null>(null);
+
+  const { data: patientData, isLoading: isFetching } = useQuery({
+    queryKey: ["patient", patientId],
+    queryFn: async () => {
+      if (!patientId) return null;
+      const { data } = await api.get(`/patients/${patientId}`);
+      return data;
+    },
+    enabled: !!patientId,
+  });
 
   const {
     register,
     handleSubmit,
     watch,
+    reset,
     formState: { errors },
   } = useForm<PatientFormValues>({
     resolver: zodResolver(patientSchema),
@@ -47,6 +67,22 @@ const PatientRegistrationForm: React.FC<PatientRegistrationFormProps> = ({
       gender: "Male",
     },
   });
+
+  useEffect(() => {
+    if (patientData) {
+      reset({
+        firstName: patientData.firstName,
+        lastName: patientData.lastName,
+        email: patientData.email || "",
+        phone: patientData.phone,
+        dob: patientData.dob.split("T")[0],
+        gender: patientData.gender,
+        bloodGroup: patientData.bloodGroup || "",
+        address: patientData.address,
+        chiefComplaint: patientData.chiefComplaint || "",
+      });
+    }
+  }, [patientData, reset]);
 
   const dobValue = watch("dob");
 
@@ -64,26 +100,51 @@ const PatientRegistrationForm: React.FC<PatientRegistrationFormProps> = ({
 
   const onSubmit = async (data: PatientFormValues) => {
     setIsLoading(true);
-    setServerError("");
 
     try {
-      await api.post("/patients", data);
+      if (patientId) {
+        await api.put(`/patients/${patientId}`, { ...data, id: patientId });
+      } else {
+        await api.post("/patients", data);
+      }
+      toast.success(
+        patientId
+          ? "Patient updated successfully"
+          : "Patient registered successfully",
+      );
       if (onSuccess) onSuccess();
     } catch (err: any) {
-      setServerError(
-        err.response?.data || "Failed to register patient. Please try again.",
+      toast.error(
+        err.response?.data || "Failed to save patient. Please try again.",
       );
     } finally {
       setIsLoading(false);
     }
   };
 
+  if (isFetching) {
+    return (
+      <Card
+        title="Loading Patient Details..."
+        description="Please wait while we fetch the information."
+      >
+        <div className="flex justify-center p-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </Card>
+    );
+  }
+
   return (
     <Card
-      title="Register New Patient"
-      description="Enter the patient's personal and medical information"
+      title={patientId ? "Edit Patient" : "Register New Patient"}
+      description={
+        patientId
+          ? "Update the patient's personal and medical information"
+          : "Enter the patient's personal and medical information"
+      }
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Input
             label="First Name *"
@@ -147,11 +208,10 @@ const PatientRegistrationForm: React.FC<PatientRegistrationFormProps> = ({
               </p>
             )}
           </div>
-          <Input
+          <BloodGroupSelect
             label="Blood Group"
             {...register("bloodGroup")}
             error={errors.bloodGroup?.message}
-            placeholder="O+"
           />
         </div>
 
@@ -169,13 +229,7 @@ const PatientRegistrationForm: React.FC<PatientRegistrationFormProps> = ({
           placeholder="123 Health St, Medical District"
         />
 
-        {serverError && (
-          <div className="p-3 bg-red-50 text-red-600 text-sm rounded-xl border border-red-100 animate-shake">
-            {serverError}
-          </div>
-        )}
-
-        <div className="flex justify-end gap-3 pt-4">
+        <div className="flex justify-end gap-3">
           <Button
             variant="outline"
             type="button"
@@ -189,7 +243,7 @@ const PatientRegistrationForm: React.FC<PatientRegistrationFormProps> = ({
             isLoading={isLoading}
             className="rounded-xl shadow-lg shadow-primary/20"
           >
-            Register Patient
+            {patientId ? "Save Changes" : "Register Patient"}
           </Button>
         </div>
       </form>

@@ -23,8 +23,19 @@ const LoginPage: React.FC = () => {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+
+  // Redirect if already authenticated
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
+
+  const savedEmail = localStorage.getItem("rememberedEmail") || "";
+  const savedPassword = localStorage.getItem("rememberedPassword") || "";
+  const savedRememberMe = localStorage.getItem("rememberMe") === "true";
 
   const {
     register,
@@ -33,9 +44,9 @@ const LoginPage: React.FC = () => {
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: "",
-      password: "",
-      rememberMe: false,
+      email: savedEmail,
+      password: savedPassword,
+      rememberMe: savedRememberMe,
     },
   });
 
@@ -49,15 +60,20 @@ const LoginPage: React.FC = () => {
         password: data.password,
       });
 
+      if (data.rememberMe) {
+        localStorage.setItem("rememberedEmail", data.email);
+        localStorage.setItem("rememberedPassword", data.password);
+        localStorage.setItem("rememberMe", "true");
+      } else {
+        localStorage.removeItem("rememberedEmail");
+        localStorage.removeItem("rememberedPassword");
+        localStorage.setItem("rememberMe", "false");
+      }
+
       login(response.data);
 
-      // Role-based redirection
-      const role = response.data.user.role;
-      if (role === "Admin" || role === "SuperAdmin") {
-        navigate("/admin");
-      } else {
-        navigate("/");
-      }
+      // Redirect to dashboard
+      navigate("/dashboard");
     } catch (err: any) {
       setError(
         err.response?.data?.message ||

@@ -9,39 +9,33 @@ import {
   CreditCard,
   ShieldCheck,
   Menu,
-  Search,
+  Settings,
 } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { settingsApi } from "../../features/settings/settings.api";
+import { useState } from "react";
 
 const MainLayout: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const { data: clinic } = useQuery({
+    queryKey: ["my-clinic"],
+    queryFn: settingsApi.getMyClinic,
+  });
 
   const handleLogout = () => {
     logout();
     navigate("/login");
   };
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
-        e.preventDefault();
-        searchInputRef.current?.focus();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
-
   const navItems = [
     {
       icon: <Home className="w-5 h-5" />,
       label: "Dashboard",
-      path: "/",
+      path: "/dashboard",
       roles: ["All"],
     },
     {
@@ -73,6 +67,12 @@ const MainLayout: React.FC = () => {
       label: "Insurance",
       path: "/insurance",
       roles: ["Admin", "Insurance", "SuperAdmin"],
+    },
+    {
+      icon: <Settings className="w-5 h-5" />,
+      label: "Settings",
+      path: "/settings",
+      roles: ["All"],
     },
   ];
 
@@ -190,44 +190,22 @@ const MainLayout: React.FC = () => {
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
         <header className="h-16 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 md:px-8 shrink-0">
-          <div className="flex items-center flex-1 max-w-xl">
-            <div
-              className={`
-              relative flex items-center w-full transition-all duration-300
-              ${isSearchFocused ? "ring-2 ring-primary/20 border-primary" : "border-slate-200 dark:border-slate-700"}
-              bg-slate-100 dark:bg-slate-900/50 rounded-lg px-3 py-1.5 border
-            `}
-            >
-              <Search className="w-4 h-4 text-slate-400 mr-2" />
-              <input
-                ref={searchInputRef}
-                type="text"
-                placeholder="Search patients (Ctrl+K)..."
-                className="bg-transparent border-none focus:ring-0 text-sm w-full h-7 outline-none"
-                onFocus={() => setIsSearchFocused(true)}
-                onBlur={() => setIsSearchFocused(false)}
-              />
-              <div className="hidden sm:flex items-center space-x-1 px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-[10px] text-slate-500 font-mono">
-                <span>Ctrl</span>
-                <span>K</span>
-              </div>
-            </div>
-          </div>
+          <div className="flex items-center flex-1"></div>
 
           <div className="flex items-center ml-4 space-x-3">
             <div className="hidden sm:block text-right mr-2">
               <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                Apex Medical Center
+                {clinic?.clinicName || "Carenexa Clinic"}
               </p>
               <p className="text-[10px] text-slate-500 uppercase tracking-tighter">
-                Premium Clinic
+                {clinic?.city || "Healthcare Provider"}
               </p>
             </div>
           </div>
         </header>
 
         {/* Content Area */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-8">
+        <main className="flex-1 overflow-y-auto p-4 md:p-4">
           <div className="max-w-7xl mx-auto">
             <Outlet />
           </div>

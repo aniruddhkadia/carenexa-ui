@@ -21,8 +21,13 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [user, setUser] = useState<UserDto | null>(null);
-  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [user, setUser] = useState<UserDto | null>(() => {
+    const storedUser = localStorage.getItem("carenexa_user");
+    return storedUser ? JSON.parse(storedUser) : null;
+  });
+  const [accessToken, setAccessToken] = useState<string | null>(() =>
+    localStorage.getItem("carenexa_access_token"),
+  );
 
   const login = useCallback((data: AuthResponse) => {
     setUser(data.user);
@@ -66,22 +71,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [login, logout]);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem("carenexa_user");
-    const storedToken = localStorage.getItem("carenexa_access_token");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-      if (storedToken) {
-        setAccessToken(storedToken);
-      } else {
-        // Initial refresh to get access token if missing
-        refresh();
-      }
+    // If we have user data but no access token, try a refresh
+    if (user && !accessToken) {
+      refresh();
     }
-  }, [refresh]);
+  }, [user, accessToken, refresh]);
 
   return (
     <AuthContext.Provider
-      value={{ user, login, logout, isAuthenticated: !!user, accessToken }}
+      value={{
+        user,
+        login,
+        logout,
+        isAuthenticated: !!user && !!user.id && !!accessToken,
+        accessToken,
+      }}
     >
       {children}
     </AuthContext.Provider>

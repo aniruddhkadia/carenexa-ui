@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   useReactTable,
   getCoreRowModel,
@@ -12,13 +12,15 @@ import {
   ChevronLeft,
   ChevronRight,
   Eye,
-  MoreHorizontal,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import api from "../../lib/axios";
 import Card from "../../components/common/Card";
 import Button from "../../components/common/Button";
 import PatientRegistrationForm from "./PatientRegistrationForm";
+import toast from "react-hot-toast";
 
 interface Patient {
   id: string;
@@ -45,8 +47,11 @@ const PatientList: React.FC = () => {
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
   const [isRegistering, setIsRegistering] = useState(false);
+  const [editingPatientId, setEditingPatientId] = useState<
+    string | undefined
+  >();
 
-  const { data, isLoading } = useQuery<PaginatedPatients>({
+  const { data, isLoading, refetch } = useQuery<PaginatedPatients>({
     queryKey: ["patients", page, searchTerm],
     queryFn: async () => {
       const { data } = await api.get(
@@ -55,6 +60,27 @@ const PatientList: React.FC = () => {
       return data;
     },
   });
+
+  const queryClient = useQueryClient();
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/patients/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["patients"] });
+      toast.success("Patient deleted successfully");
+    },
+  });
+
+  const handleDelete = (id: string) => {
+    deleteMutation.mutate(id);
+  };
+
+  const handleEdit = (id: string) => {
+    setEditingPatientId(id);
+    setIsRegistering(true);
+  };
 
   const columns = useMemo(
     () => [
@@ -114,18 +140,33 @@ const PatientList: React.FC = () => {
         id: "actions",
         header: "Actions",
         cell: (info) => (
-          <div className="flex justify-end space-x-2">
+          <div className="flex items-center space-x-2">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => navigate(`/patients/${info.row.original.id}`)}
-              className="h-8 w-8 p-0"
+              className="h-9 w-9 p-0 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-primary hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
               title="View Profile"
             >
               <Eye size={16} />
             </Button>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-              <MoreHorizontal size={16} />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleEdit(info.row.original.id)}
+              className="h-9 w-9 p-0 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-primary hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+              title="Edit Profile"
+            >
+              <Pencil size={16} />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleDelete(info.row.original.id)}
+              className="h-9 w-9 p-0 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-rose-600 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+              title="Delete Profile"
+            >
+              <Trash2 size={16} />
             </Button>
           </div>
         ),
@@ -144,7 +185,7 @@ const PatientList: React.FC = () => {
   const totalPages = Math.ceil((data?.totalCount ?? 0) / pageSize);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Patients</h2>
@@ -153,7 +194,10 @@ const PatientList: React.FC = () => {
           </p>
         </div>
         <Button
-          onClick={() => setIsRegistering(true)}
+          onClick={() => {
+            setEditingPatientId(undefined);
+            setIsRegistering(true);
+          }}
           className="rounded-xl shadow-lg shadow-primary/20"
         >
           <Plus size={18} className="mr-2" />
@@ -265,16 +309,21 @@ const PatientList: React.FC = () => {
         )}
       </Card>
 
-      {/* Registration Form - Simplified for now, will be drawer later */}
+      {/* Registration / Edit Form */}
       {isRegistering && (
         <div className="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-2xl bg-white dark:bg-slate-800 rounded-3xl overflow-hidden shadow-2xl">
+          <div className="w-full max-w-2xl bg-white dark:bg-slate-800 rounded-3xl overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto">
             <PatientRegistrationForm
+              patientId={editingPatientId}
               onSuccess={() => {
                 setIsRegistering(false);
-                // Refresh table
+                setEditingPatientId(undefined);
+                refetch();
               }}
-              onCancel={() => setIsRegistering(false)}
+              onCancel={() => {
+                setIsRegistering(false);
+                setEditingPatientId(undefined);
+              }}
             />
           </div>
         </div>

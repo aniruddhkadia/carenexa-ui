@@ -1,6 +1,8 @@
-import React from "react";
-import { useQuery } from "@tanstack/react-query";
+import React, { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { format } from "date-fns";
 import api from "../../lib/axios";
 import {
   Users,
@@ -12,7 +14,17 @@ import {
   Clock,
   Plus,
   AlertCircle,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
 } from "lucide-react";
+import AddAppointmentModal from "../appointments/AddAppointmentModal";
+import ViewMedicalRecordModal from "../medical-records/ViewMedicalRecordModal";
+import {
+  medicalRecordsApi,
+  type MedicalRecordDto,
+} from "../medical-records/medicalRecords.api";
+import { formatToLocalTime } from "../../utils/dateUtils";
 
 interface DashboardSummary {
   totalPatients: number;
@@ -22,17 +34,20 @@ interface DashboardSummary {
   monthlyRevenue: number;
   recentAppointments: Array<{
     id: string;
+    patientId: string;
     patientName: string;
     appointmentDate: string;
     status: string;
   }>;
 }
 
-interface ActivityLog {
-  message: string;
-  createdAt: string;
-  action: string;
-  entity: string;
+interface DailyVisit {
+  id: string;
+  patientId: string;
+  patientName: string;
+  completedAt: string;
+  diagnosis: string;
+  doctorName: string;
 }
 
 const StatCard: React.FC<{
@@ -90,25 +105,51 @@ const StatCard: React.FC<{
 );
 
 const Dashboard: React.FC = () => {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedRecord, setSelectedRecord] = useState<MedicalRecordDto | null>(
+    null,
+  );
+  const [isRecordLoading, setIsRecordLoading] = useState(false);
+
+  const handleViewRecord = async (recordId: string) => {
+    try {
+      setIsRecordLoading(true);
+      const record = await medicalRecordsApi.getRecordById(recordId);
+      setSelectedRecord(record);
+    } catch (error) {
+      console.error("Failed to fetch medical record", error);
+    } finally {
+      setIsRecordLoading(false);
+    }
+  };
+
   const { data: summary, isLoading: isSummaryLoading } =
     useQuery<DashboardSummary>({
       queryKey: ["dashboard-summary"],
       queryFn: async () => {
-        const { data } = await api.get("/dashboard/summary");
+        const todayStr = new Date().toISOString().split("T")[0];
+        const { data } = await api.get(`/dashboard/summary?date=${todayStr}`);
         return data;
       },
       refetchInterval: 120000, // 2 minutes
     });
 
-  const { data: activityLogs, isLoading: isActivityLoading } = useQuery<
-    ActivityLog[]
+  const { data: dailyVisits, isLoading: isDailyVisitsLoading } = useQuery<
+    DailyVisit[]
   >({
-    queryKey: ["dashboard-activity"],
+    queryKey: [
+      "dashboard-daily-visits",
+      selectedDate.toISOString().split("T")[0],
+    ],
     queryFn: async () => {
-      const { data } = await api.get("/dashboard/activity");
+      const { data } = await api.get(
+        `/dashboard/completed-visits?date=${selectedDate.toISOString().split("T")[0]}`,
+      );
       return data;
     },
-    refetchInterval: 60000, // 1 minute
   });
 
   const stats = [
@@ -162,7 +203,10 @@ const Dashboard: React.FC = () => {
             <Clock size={16} className="mr-2" />
             Daily Report
           </button>
-          <button className="flex items-center bg-primary text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20">
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center bg-primary text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
+          >
             <Plus size={16} className="mr-2" />
             New Appointment
           </button>
@@ -184,9 +228,7 @@ const Dashboard: React.FC = () => {
         {/* Today's Appointments */}
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-xl font-bold tracking-tight">
-              Today's Appointments
-            </h3>
+            <h3 className="text-xl font-bold tracking-tight">Appointments</h3>
             <button className="text-sm font-bold text-primary hover:underline">
               View All
             </button>
@@ -206,32 +248,7 @@ const Dashboard: React.FC = () => {
               <div className="divide-y divide-slate-100 dark:divide-slate-700">
                 {(summary?.recentAppointments?.length
                   ? summary.recentAppointments
-                  : [
-                      {
-                        id: "1",
-                        patientName: "Rahul Sharma",
-                        appointmentDate: new Date(
-                          new Date().setHours(new Date().getHours() + 1),
-                        ).toISOString(),
-                        status: "Booked",
-                      },
-                      {
-                        id: "2",
-                        patientName: "Priya Patel",
-                        appointmentDate: new Date(
-                          new Date().setHours(new Date().getHours() - 1),
-                        ).toISOString(),
-                        status: "Completed",
-                      },
-                      {
-                        id: "3",
-                        patientName: "Amit Kumar",
-                        appointmentDate: new Date(
-                          new Date().setHours(new Date().getHours() + 2),
-                        ).toISOString(),
-                        status: "Booked",
-                      },
-                    ]
+                  : []
                 ).map((appt, i) => (
                   <motion.div
                     key={appt.id}
@@ -242,11 +259,7 @@ const Dashboard: React.FC = () => {
                   >
                     <div className="flex items-center space-x-4">
                       <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center font-bold text-slate-500 group-hover:bg-primary group-hover:text-white transition-colors">
-                        {new Date(appt.appointmentDate).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          hour12: false,
-                        })}
+                        {formatToLocalTime(appt.appointmentDate)}
                       </div>
                       <div>
                         <p className="font-bold text-slate-900 dark:text-white leading-tight">
@@ -272,9 +285,18 @@ const Dashboard: React.FC = () => {
                       >
                         {appt.status}
                       </span>
-                      <button className="text-xs font-bold text-primary px-3 py-1.5 rounded-lg border border-primary/20 hover:bg-primary hover:text-white transition-all opacity-0 group-hover:opacity-100">
-                        Start Visit
-                      </button>
+                      {appt.status !== "Completed" && (
+                        <button
+                          onClick={() =>
+                            navigate(
+                              `/medical-records/${appt.patientId}/${appt.id}`,
+                            )
+                          }
+                          className="text-xs font-bold text-primary px-3 py-1.5 rounded-lg border border-primary/20 hover:bg-primary hover:text-white transition-all opacity-0 group-hover:opacity-100"
+                        >
+                          Start Visit
+                        </button>
+                      )}
                     </div>
                   </motion.div>
                 ))}
@@ -283,23 +305,58 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Recent Activity */}
+        {/* Daily Completed Visits */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-xl font-bold tracking-tight">
-              Recent Activity
+              Completed Visits
             </h3>
-            <button className="text-sm font-bold text-primary hover:underline">
-              Refresh
-            </button>
+            <span className="px-2.5 py-1 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-full text-[10px] font-black uppercase tracking-tight">
+              {dailyVisits?.length || 0} Records
+            </span>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 p-2 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden">
-            {isActivityLoading ? (
+          <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden min-h-[300px]">
+            {/* Boxed Date Selector */}
+            <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-center items-center gap-3 bg-slate-50/50 dark:bg-slate-900/20">
+              <button
+                onClick={() => {
+                  const d = new Date(selectedDate);
+                  d.setDate(d.getDate() - 1);
+                  setSelectedDate(d);
+                }}
+                className="w-10 h-10 flex items-center justify-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm hover:shadow-md transition-all text-slate-600 dark:text-slate-300"
+              >
+                <ChevronLeft size={18} />
+              </button>
+
+              <button
+                onClick={() => setSelectedDate(new Date())}
+                className="px-6 h-10 flex items-center justify-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm hover:shadow-md transition-all text-sm font-bold text-slate-700 dark:text-slate-200"
+              >
+                <Calendar size={16} className="mr-2 text-primary" />
+                {selectedDate.toDateString() === new Date().toDateString()
+                  ? "Today"
+                  : format(selectedDate, "MMM dd")}
+              </button>
+
+              <button
+                onClick={() => {
+                  const d = new Date(selectedDate);
+                  d.setDate(d.getDate() + 1);
+                  setSelectedDate(d);
+                }}
+                className="w-10 h-10 flex items-center justify-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm hover:shadow-md transition-all text-slate-600 dark:text-slate-300"
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
+
+            {isDailyVisitsLoading ? (
               <div className="p-4 space-y-4">
                 {[1, 2, 3, 4, 5].map((i) => (
                   <div key={i} className="flex space-x-3">
-                    <div className="w-8 h-8 rounded-full bg-slate-100 animate-pulse shrink-0" />
+                    <div className="w-10 h-10 rounded-xl bg-slate-100 animate-pulse shrink-0" />
                     <div className="space-y-2 flex-1">
                       <div className="h-3 w-3/4 bg-slate-100 animate-pulse rounded" />
                       <div className="h-2 w-1/4 bg-slate-100 animate-pulse rounded" />
@@ -307,65 +364,71 @@ const Dashboard: React.FC = () => {
                   </div>
                 ))}
               </div>
+            ) : dailyVisits?.length === 0 ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
+                <div className="w-16 h-16 rounded-full bg-slate-50 dark:bg-slate-900/50 flex items-center justify-center mb-4 border border-slate-100 dark:border-slate-800">
+                  <CheckCircle2
+                    size={32}
+                    className="text-slate-200 dark:text-slate-700"
+                  />
+                </div>
+                <p className="text-sm font-semibold text-slate-400">
+                  No visits completed on this day.
+                </p>
+              </div>
             ) : (
               <div className="space-y-1">
-                {(activityLogs?.length
-                  ? activityLogs
-                  : [
-                      {
-                        message: "Registered new patient Rahul Sharma",
-                        createdAt: new Date().toISOString(),
-                        action: "CREATE",
-                        entity: "Patient",
-                      },
-                      {
-                        message: "Completed appointment for Priya Patel",
-                        createdAt: new Date(Date.now() - 3600000).toISOString(),
-                        action: "UPDATE",
-                        entity: "Appointment",
-                      },
-                      {
-                        message: "Added prescription for Amit Kumar",
-                        createdAt: new Date(Date.now() - 7200000).toISOString(),
-                        action: "CREATE",
-                        entity: "MedicalRecord",
-                      },
-                    ]
-                ).map((log, i) => (
-                  <div
-                    key={i}
-                    className="p-3 flex items-start space-x-3 hover:bg-slate-50 dark:hover:bg-slate-900/50 rounded-2xl transition-colors"
+                {dailyVisits?.map((visit, i) => (
+                  <motion.div
+                    key={visit.id}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: i * 0.05 }}
+                    className="p-3 flex items-start space-x-4 hover:bg-slate-50 dark:hover:bg-slate-900/50 rounded-2xl transition-all group"
                   >
-                    <div
-                      className={`
-                        w-8 h-8 rounded-full flex items-center justify-center shrink-0
-                        ${
-                          log.action === "CREATE"
-                            ? "bg-emerald-100 text-emerald-600"
-                            : log.action === "DELETE"
-                              ? "bg-rose-100 text-rose-600"
-                              : "bg-blue-100 text-blue-600"
-                        }
-                      `}
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 text-primary font-bold text-xs uppercase group-hover:bg-primary group-hover:text-white transition-colors">
+                      {formatToLocalTime(visit.completedAt)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-bold text-slate-800 dark:text-white flex items-center">
+                        {visit.patientName}
+                      </p>
+                      <p className="text-[11px] font-medium text-slate-500 italic truncate">
+                        {visit.diagnosis || "Consultation Report"}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => handleViewRecord(visit.id)}
+                      disabled={isRecordLoading}
+                      className="h-8 w-8 p-0 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-primary hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center justify-center disabled:opacity-50"
+                      title="View Medical Record"
                     >
-                      <CheckCircle2 size={16} />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 leading-snug">
-                        {log.message}
-                      </p>
-                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tight mt-0.5">
-                        {new Date(log.createdAt).toLocaleTimeString()} •{" "}
-                        {log.entity}
-                      </p>
-                    </div>
-                  </div>
+                      <Eye size={14} />
+                    </button>
+                  </motion.div>
                 ))}
               </div>
             )}
           </div>
         </div>
       </div>
+
+      <AddAppointmentModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={() => {
+          setIsModalOpen(false);
+          queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
+          queryClient.invalidateQueries({ queryKey: ["dashboard-activity"] });
+        }}
+      />
+
+      {selectedRecord && (
+        <ViewMedicalRecordModal
+          record={selectedRecord}
+          onClose={() => setSelectedRecord(null)}
+        />
+      )}
     </div>
   );
 };
