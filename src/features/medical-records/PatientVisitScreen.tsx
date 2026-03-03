@@ -3,10 +3,12 @@ import { useParams, useNavigate } from "react-router-dom";
 import Card from "../../components/common/Card";
 import Button from "../../components/common/Button";
 import SmartPrescriptionTable from "./SmartPrescriptionTable";
+import MedicineHistoryTable from "./components/MedicineHistoryTable";
 import {
   medicalRecordsApi,
   type SaveMedicalRecordRequest,
   type VisitTemplateDto,
+  type MedicalRecordDto,
 } from "./medicalRecords.api";
 import {
   Save,
@@ -65,6 +67,8 @@ const PatientVisitScreen: React.FC = () => {
     status: 0,
   });
 
+  const [history, setHistory] = useState<MedicalRecordDto[]>([]);
+
   const [prescriptions, setPrescriptions] = useState<any[]>([]);
   const autoSaveTimerRef = useRef<any>(null);
 
@@ -74,6 +78,7 @@ const PatientVisitScreen: React.FC = () => {
   useEffect(() => {
     if (targetPatientId) {
       loadPatientData();
+      loadPatientHistory();
     }
     loadTemplates();
 
@@ -156,6 +161,16 @@ const PatientVisitScreen: React.FC = () => {
     try {
       const data = await medicalRecordsApi.getTemplates();
       setTemplates(data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const loadPatientHistory = async () => {
+    if (!targetPatientId) return;
+    try {
+      const data = await medicalRecordsApi.getPatientHistory(targetPatientId);
+      setHistory(data);
     } catch (e) {
       console.error(e);
     }
@@ -615,6 +630,60 @@ const PatientVisitScreen: React.FC = () => {
               </div>
             </Card>
           </div>
+        </div>
+      </div>
+
+      {/* Right Pane - Visit History Sidebar */}
+      <div className="w-80 flex flex-col gap-6 overflow-y-auto hidden xl:flex print:hidden">
+        <div className="flex flex-col gap-6">
+          <MedicineHistoryTable
+            history={history}
+            onAddMedicine={(med) => {
+              const newPrescription = {
+                id: Math.random().toString(),
+                medicineObj: med.medicineObj || {
+                  id: med.medicineId,
+                  brandName: med.brandName,
+                  genericName: med.genericName,
+                  strength: med.strength,
+                  form: med.form,
+                },
+                dose: med.dose,
+                duration: med.duration,
+                frequency: med.frequency,
+                instructions: med.instructions,
+              };
+              setPrescriptions([...prescriptions, newPrescription]);
+              toast.success("Added from history");
+            }}
+          />
+
+          {/* Previous Diagnoses Quick View */}
+          <Card className="shadow-sm border-slate-200 rounded-2xl p-4">
+            <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">
+              Previous Diagnoses
+            </h4>
+            <div className="space-y-3">
+              {history.length === 0 ? (
+                <p className="text-xs text-slate-400 italic">No history</p>
+              ) : (
+                history.slice(0, 5).map((h) => (
+                  <div
+                    key={h.id}
+                    className="p-3 bg-slate-50 rounded-xl border border-slate-100"
+                  >
+                    <p className="text-xs font-bold text-slate-700 uppercase">
+                      {h.diagnosis || "No Diagnosis"}
+                    </p>
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      {format(new Date(h.createdAt), "dd MMM yyyy")} •{" "}
+                      {h.doctorName}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+          </Card>
         </div>
       </div>
 

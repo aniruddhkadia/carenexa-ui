@@ -10,6 +10,8 @@ import ProtectedRoute from "./features/auth/ProtectedRoute";
 import AppointmentCalendar from "./features/appointments/AppointmentCalendar";
 import PatientProfilePage from "./features/patients/PatientProfilePage";
 import PatientVisitScreen from "./features/medical-records/PatientVisitScreen";
+import MedicineManagement from "./features/medical-records/MedicineManagement";
+import MedicalRecordsPage from "./features/medical-records/MedicalRecordsPage";
 import SettingsPage from "./features/settings/SettingsPage";
 import toast, { Toaster, ToastBar } from "react-hot-toast";
 
@@ -77,10 +79,12 @@ function App() {
             <Route path="patients" element={<PatientList />} />
             <Route path="patients/:id" element={<PatientProfilePage />} />
             <Route path="appointments" element={<AppointmentCalendar />} />
+            <Route path="records" element={<MedicalRecordsPage />} />
             <Route
               path="medical-records/:patientId/:appointmentId?"
               element={<PatientVisitScreen />}
             />
+            <Route path="medicines" element={<MedicineManagement />} />
             <Route
               path="billing"
               element={<div className="p-4">Billing (Coming Soon)</div>}

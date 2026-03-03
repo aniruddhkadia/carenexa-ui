@@ -12,17 +12,28 @@ import {
 } from "lucide-react";
 import Button from "../../components/common/Button";
 import Card from "../../components/common/Card";
-import { type MedicalRecordDto } from "./medicalRecords.api";
+import { type MedicalRecordDto, medicalRecordsApi } from "./medicalRecords.api";
+import { useQuery } from "@tanstack/react-query";
 
 interface ViewMedicalRecordModalProps {
-  record: MedicalRecordDto;
+  record?: MedicalRecordDto;
+  recordId?: string;
   onClose: () => void;
 }
 
 const ViewMedicalRecordModal: React.FC<ViewMedicalRecordModalProps> = ({
-  record,
+  record: initialRecord,
+  recordId,
   onClose,
 }) => {
+  const { data: fetchedRecord, isLoading } = useQuery({
+    queryKey: ["medical-record", recordId],
+    queryFn: () => medicalRecordsApi.getRecordById(recordId!),
+    enabled: !!recordId && !initialRecord,
+  });
+
+  const record = initialRecord || fetchedRecord;
+
   const parsePrescription = (prescriptionJson: string) => {
     try {
       if (!prescriptionJson) return [];
@@ -32,6 +43,20 @@ const ViewMedicalRecordModal: React.FC<ViewMedicalRecordModalProps> = ({
       return [];
     }
   };
+
+  if (isLoading || !record) {
+    if (isLoading) {
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <Card className="p-12 rounded-3xl animate-pulse flex flex-col items-center">
+            <Activity className="text-primary animate-bounce mb-4" size={48} />
+            <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Loading Medical Record...</p>
+          </Card>
+        </div>
+      );
+    }
+    return null;
+  }
 
   const prescriptions = parsePrescription(record.prescription);
 

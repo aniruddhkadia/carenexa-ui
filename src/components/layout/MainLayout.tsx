@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   Menu,
   Settings,
+  Pill,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { settingsApi } from "../../features/settings/settings.api";
@@ -53,7 +54,13 @@ const MainLayout: React.FC = () => {
     {
       icon: <FileText className="w-5 h-5" />,
       label: "Medical Records",
-      path: "/medical-records",
+      path: "/records",
+      roles: ["Doctor", "Nurse", "Admin", "SuperAdmin"],
+    },
+    {
+      icon: <Pill className="w-5 h-5" />,
+      label: "Medicines",
+      path: "/medicines",
       roles: ["Doctor", "Nurse", "Admin", "SuperAdmin"],
     },
     {

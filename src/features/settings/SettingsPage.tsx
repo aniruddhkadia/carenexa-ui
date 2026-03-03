@@ -65,10 +65,10 @@ const SettingsPage: React.FC = () => {
   const [showAddStaff, setShowAddStaff] = useState(false);
 
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-8">
+    <div className="">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold text-slate-900">Settings</h1>
+          <h1 className="text-2xl font-extrabold text-slate-800">Settings</h1>
           <p className="text-slate-500">
             Manage your clinic, profile, and team permissions
           </p>

@@ -22,6 +22,7 @@ import Button from "../../components/common/Button";
 import Card from "../../components/common/Card";
 import api from "../../lib/axios";
 import ViewMedicalRecordModal from "../medical-records/ViewMedicalRecordModal";
+import MedicineHistoryTable from "../medical-records/components/MedicineHistoryTable";
 import { type MedicalRecordDto } from "../medical-records/medicalRecords.api";
 import PatientRegistrationForm from "./PatientRegistrationForm";
 
@@ -45,7 +46,7 @@ const PatientProfilePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<
-    "history" | "appointments" | "billing"
+    "history" | "appointments" | "billing" | "medications"
   >("history");
   const [selectedRecord, setSelectedRecord] = useState<MedicalRecordDto | null>(
     null,
@@ -73,7 +74,7 @@ const PatientProfilePage: React.FC = () => {
       const { data } = await api.get(`/MedicalRecords/${id}/history`);
       return data;
     },
-    enabled: !!id && activeTab === "history",
+    enabled: !!id && (activeTab === "history" || activeTab === "medications"),
   });
 
   if (isPatientLoading) {
@@ -105,9 +106,7 @@ const PatientProfilePage: React.FC = () => {
           <ArrowLeft size={18} />
         </Button>
         <div>
-          <h2 className="text-3xl font-bold tracking-tight uppercase">
-            Patient Profile
-          </h2>
+          <h2 className="text-2xl font-bold tracking-tight">Patient Profile</h2>
           <div className="flex items-center text-slate-500 text-sm font-medium mt-0.5">
             <span>Patients</span>
             <ChevronRight size={14} className="mx-1" />
@@ -216,6 +215,11 @@ const PatientProfilePage: React.FC = () => {
                 id: "billing",
                 label: "Billing",
                 icon: <CreditCard size={16} />,
+              },
+              {
+                id: "medications",
+                label: "Medications",
+                icon: <Pill size={16} />,
               },
             ].map((tab) => (
               <button
@@ -354,6 +358,11 @@ const PatientProfilePage: React.FC = () => {
               <div className="bg-white dark:bg-slate-800 p-10 rounded-3xl border border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center text-slate-400">
                 <CreditCard size={48} className="mb-4 opacity-20" />
                 <p className="font-bold">No billing records found.</p>
+              </div>
+            )}
+            {activeTab === "medications" && (
+              <div className="space-y-4">
+                <MedicineHistoryTable history={visits || []} />
               </div>
             )}
           </div>
