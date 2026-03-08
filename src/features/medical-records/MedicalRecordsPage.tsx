@@ -15,6 +15,7 @@ import Card from "../../components/common/Card";
 import Button from "../../components/common/Button";
 import { format } from "date-fns";
 import ViewMedicalRecordModal from "./ViewMedicalRecordModal";
+import Pagination from "../../components/common/Pagination";
 
 interface MedicalRecord {
   id: string;
@@ -28,14 +29,25 @@ interface MedicalRecord {
 const MedicalRecordsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
-  const { data: records, isLoading } = useQuery<MedicalRecord[]>({
-    queryKey: ["all-medical-records"],
+  const { data, isLoading } = useQuery<{
+    items: MedicalRecord[];
+    totalCount: number;
+  }>({
+    queryKey: ["all-medical-records", page, pageSize, searchTerm],
     queryFn: async () => {
-      const { data } = await api.get("/medicalrecords");
+      const { data } = await api.get(
+        `/medicalrecords?page=${page}&pageSize=${pageSize}`,
+      );
       return data;
     },
   });
+
+  const records = data?.items || [];
+  const totalCount = data?.totalCount || 0;
+  const totalPages = Math.ceil(totalCount / pageSize);
 
   const filteredRecords = records?.filter(
     (record) =>
@@ -50,7 +62,7 @@ const MedicalRecordsPage: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Medical Records</h1>
-          <p className="text-slate-500 text-sm">
+          <p className="text-slate-500 mt-1">
             Central repository of all patient visits and clinical notes
           </p>
         </div>
@@ -227,6 +239,19 @@ const MedicalRecordsPage: React.FC = () => {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination UI */}
+        <Pagination
+          currentPage={page}
+          totalPages={totalPages}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          onPageChange={setPage}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setPage(1);
+          }}
+        />
       </Card>
 
       {/* View Modal */}

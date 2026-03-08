@@ -44,6 +44,13 @@ export const appointmentsApi = {
     return res.data;
   },
 
+  getByPatient: async (patientId: string) => {
+    const res = await axios.get<AppointmentDto[]>(
+      `/appointments/patient/${patientId}`,
+    );
+    return res.data;
+  },
+
   create: async (data: CreateAppointmentRequest) => {
     const res = await axios.post<string>("/appointments", data);
     return res.data;

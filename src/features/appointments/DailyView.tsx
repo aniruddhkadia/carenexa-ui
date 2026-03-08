@@ -13,6 +13,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { format, isSameDay } from "date-fns";
+import { parseApiDate } from "../../utils/dateUtils";
 
 interface DailyViewProps {
   date: Date;
@@ -34,8 +35,8 @@ const DailyView: React.FC<DailyViewProps> = ({ date, onDateChange }) => {
       const data = await appointmentsApi.getDaily(format(date, "yyyy-MM-dd"));
       const sorted = [...data].sort(
         (a, b) =>
-          new Date(a.appointmentDate).getTime() -
-          new Date(b.appointmentDate).getTime(),
+          parseApiDate(a.appointmentDate).getTime() -
+          parseApiDate(b.appointmentDate).getTime(),
       );
       setAppointments(sorted);
     } catch (error) {
@@ -184,10 +185,10 @@ const DailyView: React.FC<DailyViewProps> = ({ date, onDateChange }) => {
                         Time
                       </span>
                       <span className="text-xs font-extrabold text-slate-700 group-hover:text-primary transition-colors">
-                        {format(new Date(a.appointmentDate), "hh:mm")}
+                        {format(parseApiDate(a.appointmentDate), "hh:mm")}
                       </span>
                       <span className="text-[9px] font-bold text-slate-400 uppercase leading-none mt-0.5">
-                        {format(new Date(a.appointmentDate), "a")}
+                        {format(parseApiDate(a.appointmentDate), "a")}
                       </span>
                     </div>
 

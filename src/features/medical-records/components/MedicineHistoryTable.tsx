@@ -50,10 +50,10 @@ const MedicineHistoryTable: React.FC<MedicineHistoryTableProps> = ({
         <table className="w-full text-xs text-left">
           <thead className="bg-slate-50/30 text-slate-400 font-bold uppercase tracking-wider border-b border-slate-200">
             <tr>
-              <th className="px-4 py-3">Medicine</th>
-              <th className="px-4 py-3">Dose / Freq</th>
-              <th className="px-4 py-3">Prescribed On</th>
-              {onAddMedicine && <th className="px-4 py-3 w-10"></th>}
+              <th className="px-2 py-2">Medicine</th>
+              <th className="px-1 py-2">Dose / Freq</th>
+              <th className="px-2 py-2">Prescribed On</th>
+              {onAddMedicine && <th className="px-2 py-2 w-10"></th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">

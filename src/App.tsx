@@ -13,6 +13,7 @@ import PatientVisitScreen from "./features/medical-records/PatientVisitScreen";
 import MedicineManagement from "./features/medical-records/MedicineManagement";
 import MedicalRecordsPage from "./features/medical-records/MedicalRecordsPage";
 import SettingsPage from "./features/settings/SettingsPage";
+import TeamManagementPage from "./features/team/TeamManagementPage";
 import toast, { Toaster, ToastBar } from "react-hot-toast";
 
 function App() {
@@ -76,29 +77,125 @@ function App() {
           <Route element={<MainLayout />}>
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
-            <Route path="patients" element={<PatientList />} />
-            <Route path="patients/:id" element={<PatientProfilePage />} />
-            <Route path="appointments" element={<AppointmentCalendar />} />
-            <Route path="records" element={<MedicalRecordsPage />} />
+
+            <Route
+              path="patients"
+              element={
+                <ProtectedRoute
+                  allowedRoles={[
+                    "Doctor",
+                    "Nurse",
+                    "Staff",
+                    "Admin",
+                    "SuperAdmin",
+                  ]}
+                />
+              }
+            >
+              <Route index element={<PatientList />} />
+              <Route path=":id" element={<PatientProfilePage />} />
+            </Route>
+
+            <Route
+              path="appointments"
+              element={
+                <ProtectedRoute
+                  allowedRoles={[
+                    "Doctor",
+                    "Nurse",
+                    "Staff",
+                    "Admin",
+                    "SuperAdmin",
+                  ]}
+                />
+              }
+            >
+              <Route index element={<AppointmentCalendar />} />
+            </Route>
+
+            <Route
+              path="records"
+              element={
+                <ProtectedRoute
+                  allowedRoles={["Doctor", "Nurse", "Admin", "SuperAdmin"]}
+                />
+              }
+            >
+              <Route index element={<MedicalRecordsPage />} />
+            </Route>
+
             <Route
               path="medical-records/:patientId/:appointmentId?"
-              element={<PatientVisitScreen />}
-            />
-            <Route path="medicines" element={<MedicineManagement />} />
+              element={
+                <ProtectedRoute
+                  allowedRoles={["Doctor", "Nurse", "Admin", "SuperAdmin"]}
+                />
+              }
+            >
+              <Route index element={<PatientVisitScreen />} />
+            </Route>
+            <Route
+              path="medicines"
+              element={
+                <ProtectedRoute
+                  allowedRoles={["Doctor", "Nurse", "Admin", "SuperAdmin"]}
+                />
+              }
+            >
+              <Route index element={<MedicineManagement />} />
+            </Route>
             <Route
               path="billing"
-              element={<div className="p-4">Billing (Coming Soon)</div>}
-            />
+              element={
+                <ProtectedRoute
+                  allowedRoles={["Admin", "SuperAdmin", "Staff"]}
+                />
+              }
+            >
+              <Route
+                index
+                element={<div className="p-4">Billing (Coming Soon)</div>}
+              />
+            </Route>
             <Route
               path="insurance"
               element={
-                <div className="p-4">Insurance Claims (Coming Soon)</div>
+                <ProtectedRoute
+                  allowedRoles={["Admin", "Insurance", "SuperAdmin"]}
+                />
               }
-            />
-            <Route path="settings" element={<SettingsPage />} />
+            >
+              <Route
+                index
+                element={
+                  <div className="p-4">Insurance Claims (Coming Soon)</div>
+                }
+              />
+            </Route>
+            <Route
+              path="settings"
+              element={
+                <ProtectedRoute
+                  allowedRoles={[
+                    "Admin",
+                    "SuperAdmin",
+                    "Doctor",
+                    "Nurse",
+                    "Staff",
+                  ]}
+                />
+              }
+            >
+              <Route index element={<SettingsPage />} />
+            </Route>
+            <Route
+              path="team"
+              element={<ProtectedRoute allowedRoles={["SuperAdmin"]} />}
+            >
+              <Route index element={<TeamManagementPage />} />
+            </Route>
           </Route>
         </Route>
-
         <Route
           path="/unauthorized"
           element={<div className="p-4">Unauthorized Access</div>}

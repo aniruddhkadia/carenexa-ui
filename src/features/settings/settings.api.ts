@@ -20,6 +20,9 @@ export interface UserProfileDto {
   specialization: string;
   qualification: string;
   role: string;
+  isActive: boolean;
+  createdAt: string;
+  renewalDueDate?: string;
 }
 
 export const settingsApi = {
@@ -48,5 +51,11 @@ export const settingsApi = {
   },
   createStaff: async (data: any) => {
     await axios.post("/users/staff", data);
+  },
+  updateStaff: async (id: string, data: any) => {
+    await axios.put(`/users/staff/${id}`, data);
+  },
+  deleteStaff: async (id: string) => {
+    await axios.delete(`/users/staff/${id}`);
   },
 };

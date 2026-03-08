@@ -22,23 +22,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [user, setUser] = useState<UserDto | null>(() => {
-    const storedUser = localStorage.getItem("carenexa_user");
+    const storedUser = localStorage.getItem("arovia_user");
     return storedUser ? JSON.parse(storedUser) : null;
   });
   const [accessToken, setAccessToken] = useState<string | null>(() =>
-    localStorage.getItem("carenexa_access_token"),
+    localStorage.getItem("arovia_access_token"),
   );
 
   const login = useCallback((data: AuthResponse) => {
     setUser(data.user);
     setAccessToken(data.accessToken);
-    localStorage.setItem("carenexa_access_token", data.accessToken);
-    localStorage.setItem("carenexa_refresh_token", data.refreshToken);
-    localStorage.setItem("carenexa_user", JSON.stringify(data.user));
+    localStorage.setItem("arovia_access_token", data.accessToken);
+    localStorage.setItem("arovia_refresh_token", data.refreshToken);
+    localStorage.setItem("arovia_user", JSON.stringify(data.user));
   }, []);
 
   const logout = useCallback(async () => {
-    const refreshToken = localStorage.getItem("carenexa_refresh_token");
+    const refreshToken = localStorage.getItem("arovia_refresh_token");
     if (refreshToken) {
       try {
         await axios.post("/api/auth/logout", { refreshToken });
@@ -48,14 +48,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
     setUser(null);
     setAccessToken(null);
-    localStorage.removeItem("carenexa_access_token");
-    localStorage.removeItem("carenexa_refresh_token");
-    localStorage.removeItem("carenexa_user");
+    localStorage.removeItem("arovia_access_token");
+    localStorage.removeItem("arovia_refresh_token");
+    localStorage.removeItem("arovia_user");
   }, []);
 
   const refresh = useCallback(async () => {
-    const refreshToken = localStorage.getItem("carenexa_refresh_token");
-    const currentAccessToken = localStorage.getItem("carenexa_access_token");
+    const refreshToken = localStorage.getItem("arovia_refresh_token");
+    const currentAccessToken = localStorage.getItem("arovia_access_token");
     if (!refreshToken) return;
 
     try {

@@ -25,6 +25,7 @@ import {
   type MedicalRecordDto,
 } from "../medical-records/medicalRecords.api";
 import { formatToLocalTime } from "../../utils/dateUtils";
+import { useAuth } from "../auth/AuthContext";
 
 interface DashboardSummary {
   totalPatients: number;
@@ -105,6 +106,7 @@ const StatCard: React.FC<{
 );
 
 const Dashboard: React.FC = () => {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -130,7 +132,7 @@ const Dashboard: React.FC = () => {
     useQuery<DashboardSummary>({
       queryKey: ["dashboard-summary"],
       queryFn: async () => {
-        const todayStr = new Date().toISOString().split("T")[0];
+        const todayStr = format(new Date(), "yyyy-MM-dd");
         const { data } = await api.get(`/dashboard/summary?date=${todayStr}`);
         return data;
       },
@@ -140,13 +142,10 @@ const Dashboard: React.FC = () => {
   const { data: dailyVisits, isLoading: isDailyVisitsLoading } = useQuery<
     DailyVisit[]
   >({
-    queryKey: [
-      "dashboard-daily-visits",
-      selectedDate.toISOString().split("T")[0],
-    ],
+    queryKey: ["dashboard-daily-visits", format(selectedDate, "yyyy-MM-dd")],
     queryFn: async () => {
       const { data } = await api.get(
-        `/dashboard/completed-visits?date=${selectedDate.toISOString().split("T")[0]}`,
+        `/dashboard/completed-visits?date=${format(selectedDate, "yyyy-MM-dd")}`,
       );
       return data;
     },
@@ -192,7 +191,7 @@ const Dashboard: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-slate-800">
-            Welcome back, Dr. Amit
+            Welcome back, {user?.fullName || "Doctor"}
           </h2>
           <p className="text-slate-500 mt-1">
             Here's what's happening in your clinic today.
@@ -318,7 +317,7 @@ const Dashboard: React.FC = () => {
 
           <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden min-h-[300px]">
             {/* Boxed Date Selector */}
-            <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-center items-center gap-3 bg-slate-50/50 dark:bg-slate-900/20">
+            <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-center items-center gap-3 bg-slate-50/50 dark:bg-slate-900/20 relative z-10">
               <button
                 onClick={() => {
                   const d = new Date(selectedDate);

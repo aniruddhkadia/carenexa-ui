@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { format } from "date-fns";
 import Button from "../../components/common/Button";
 import { appointmentsApi } from "./appointments.api";
 import api from "../../lib/axios";
@@ -27,7 +28,7 @@ const AddAppointmentModal: React.FC<AddAppointmentModalProps> = ({
   const [formData, setFormData] = useState({
     patientId: "",
     patientName: "",
-    date: new Date().toISOString().split("T")[0],
+    date: format(new Date(), "yyyy-MM-dd"),
     time: "09:00",
     type: "Consultation",
     notes: "",
@@ -139,8 +140,8 @@ const AddAppointmentModal: React.FC<AddAppointmentModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
-          <h2 className="text-xl font-bold text-slate-800">
+        <div className="px-3 py-3 border-b border-slate-100 flex justify-between items-center">
+          <h2 className="text-lg font-bold text-slate-800">
             Add New Appointment
           </h2>
           <button
@@ -151,7 +152,7 @@ const AddAppointmentModal: React.FC<AddAppointmentModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-3 space-y-3">
           <div className="relative" ref={dropdownRef}>
             <label className="block text-sm font-medium text-slate-700 mb-1">
               Patient *

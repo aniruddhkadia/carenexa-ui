@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { useAuth } from "../auth/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   useReactTable,
@@ -6,21 +7,15 @@ import {
   flexRender,
   createColumnHelper,
 } from "@tanstack/react-table";
-import {
-  Plus,
-  Search,
-  ChevronLeft,
-  ChevronRight,
-  Eye,
-  Pencil,
-  Trash2,
-} from "lucide-react";
+import { Plus, Search, Eye, Pencil, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import api from "../../lib/axios";
 import Card from "../../components/common/Card";
 import Button from "../../components/common/Button";
+import Pagination from "../../components/common/Pagination";
 import PatientRegistrationForm from "./PatientRegistrationForm";
 import toast from "react-hot-toast";
+import { confirmToast } from "../../utils/toast";
 
 interface Patient {
   id: string;
@@ -30,6 +25,7 @@ interface Patient {
   gender: string;
   phone: string;
   email: string;
+  createdByUserName: string;
 }
 
 interface PaginatedPatients {
@@ -43,16 +39,18 @@ const columnHelper = createColumnHelper<Patient>();
 
 const PatientList: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(10);
   const [isRegistering, setIsRegistering] = useState(false);
   const [editingPatientId, setEditingPatientId] = useState<
     string | undefined
   >();
+  const queryClient = useQueryClient();
 
   const { data, isLoading, refetch } = useQuery<PaginatedPatients>({
-    queryKey: ["patients", page, searchTerm],
+    queryKey: ["patients", page, pageSize, searchTerm],
     queryFn: async () => {
       const { data } = await api.get(
         `/patients?q=${searchTerm}&page=${page}&pageSize=${pageSize}`,
@@ -60,8 +58,6 @@ const PatientList: React.FC = () => {
       return data;
     },
   });
-
-  const queryClient = useQueryClient();
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -74,7 +70,9 @@ const PatientList: React.FC = () => {
   });
 
   const handleDelete = (id: string) => {
-    deleteMutation.mutate(id);
+    confirmToast("Are you sure you want to delete this patient?", () => {
+      deleteMutation.mutate(id);
+    });
   };
 
   const handleEdit = (id: string) => {
@@ -136,6 +134,23 @@ const PatientList: React.FC = () => {
           </span>
         ),
       }),
+      ...(user?.role === "SuperAdmin"
+        ? [
+            columnHelper.accessor("createdByUserName", {
+              header: "Created By",
+              cell: (info) => (
+                <div className="flex items-center space-x-2">
+                  <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">
+                    {info.getValue()?.charAt(0) || "S"}
+                  </div>
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    {info.getValue() || "System"}
+                  </span>
+                </div>
+              ),
+            }),
+          ]
+        : []),
       columnHelper.display({
         id: "actions",
         header: "Actions",
@@ -172,7 +187,7 @@ const PatientList: React.FC = () => {
         ),
       }),
     ],
-    [navigate],
+    [navigate, user],
   );
 
   const table = useReactTable({
@@ -191,7 +206,7 @@ const PatientList: React.FC = () => {
           <h2 className="text-2xl font-bold tracking-tight text-slate-800">
             Patients
           </h2>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-slate-500 mt-1">
             Browse and manage your patient database.
           </p>
         </div>
@@ -246,7 +261,7 @@ const PatientList: React.FC = () => {
               {isLoading ? (
                 [1, 2, 3, 4, 5].map((i) => (
                   <tr key={i} className="animate-pulse">
-                    <td colSpan={5} className="px-6 py-4">
+                    <td colSpan={columns.length} className="px-6 py-4">
                       <div className="h-10 bg-slate-50 dark:bg-slate-900/50 rounded-xl w-full" />
                     </td>
                   </tr>
@@ -254,7 +269,7 @@ const PatientList: React.FC = () => {
               ) : table.getRowModel().rows.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={columns.length}
                     className="px-6 py-12 text-center text-slate-500 italic"
                   >
                     No patients found matching "{searchTerm}"
@@ -282,39 +297,23 @@ const PatientList: React.FC = () => {
         </div>
 
         {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="p-4 bg-slate-50/50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-tight">
-              Page {page} of {totalPages}
-            </span>
-            <div className="flex items-center space-x-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={page === 1}
-                onClick={() => setPage((p) => p - 1)}
-                className="h-8 w-8 p-0"
-              >
-                <ChevronLeft size={16} />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={page === totalPages}
-                onClick={() => setPage((p) => p + 1)}
-                className="h-8 w-8 p-0"
-              >
-                <ChevronRight size={16} />
-              </Button>
-            </div>
-          </div>
-        )}
+        <Pagination
+          currentPage={page}
+          totalPages={totalPages}
+          pageSize={pageSize}
+          totalCount={data?.totalCount ?? 0}
+          onPageChange={setPage}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setPage(1);
+          }}
+        />
       </Card>
 
       {/* Registration / Edit Form */}
       {isRegistering && (
         <div className="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-2xl bg-white dark:bg-slate-800 rounded-3xl overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto">
+          <div className="w-full max-w-2xl bg-white dark:bg-slate-800 rounded-xl overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto">
             <PatientRegistrationForm
               patientId={editingPatientId}
               onSuccess={() => {

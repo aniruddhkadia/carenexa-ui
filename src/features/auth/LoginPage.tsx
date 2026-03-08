@@ -10,6 +10,7 @@ import Card from "../../components/common/Card";
 import api from "../../lib/axios";
 import type { AuthResponse } from "./types";
 import { Eye, EyeOff } from "lucide-react";
+import toast from "react-hot-toast";
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -75,10 +76,18 @@ const LoginPage: React.FC = () => {
       // Redirect to dashboard
       navigate("/dashboard");
     } catch (err: any) {
-      setError(
+      const message =
         err.response?.data?.message ||
-          "Invalid email or password. Please try again.",
-      );
+        "Invalid email or password. Please try again.";
+
+      if (err.response?.status === 403) {
+        toast.error(message, {
+          duration: 5000,
+          id: "deactivated-account",
+        });
+      }
+
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -88,23 +97,30 @@ const LoginPage: React.FC = () => {
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
       <div className="max-w-md w-full">
         <div className="text-center mb-10">
-          <h1 className="text-4xl font-extrabold text-primary mb-2">
-            Carenexa
-          </h1>
+          {/* <h1 className="text-4xl font-extrabold text-primary mb-2">Arovia</h1> */}
+
+          <img
+            src="../../public/AroviaLogo.svg"
+            alt="Arovia"
+            className="w-50 mx-auto"
+          />
+          {/* Arovia */}
+
           <p className="text-slate-500">Healthcare Management Reimagined</p>
         </div>
-
-        <Card
+        {/* <Card
           title="Welcome Back"
           description="Login to your provider dashboard"
-        >
+        > */}
+
+        <Card>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <Input
               label="Email Address"
               type="email"
               {...register("email")}
               error={errors.email?.message}
-              placeholder="e.g., doctor@carenexa.com"
+              placeholder="e.g., doctor@arovia.com"
             />
             <Input
               label="Password"

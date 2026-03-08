@@ -21,3 +21,13 @@ export const formatToLocalTime = (
     return dateString;
   }
 };
+
+export const parseApiDate = (dateString: string) => {
+  if (!dateString) return new Date();
+  const hasTimezone = /[Z|[+-]\d{2}:?\d{2}]$/.test(dateString);
+  const normalized = hasTimezone
+    ? dateString
+    : `${dateString}${dateString.includes("T") ? "Z" : ""}`;
+
+  return new Date(normalized);
+};

@@ -9,9 +9,7 @@ import Button from "../../components/common/Button";
 import {
   Building2,
   User,
-  Users,
   Save,
-  Plus,
   ShieldCheck,
   Mail,
   Phone,
@@ -21,28 +19,23 @@ import {
 } from "lucide-react";
 
 const SettingsPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<"clinic" | "profile" | "team">(
-    "clinic",
-  );
   const { user } = useAuth();
-  const queryClient = useQueryClient();
   const isAdmin = user?.role === "Admin" || user?.role === "SuperAdmin";
+  const [activeTab, setActiveTab] = useState<"clinic" | "profile">(
+    isAdmin ? "clinic" : "profile",
+  );
+  const queryClient = useQueryClient();
 
   // Queries
   const { data: clinic } = useQuery({
     queryKey: ["my-clinic"],
     queryFn: settingsApi.getMyClinic,
+    enabled: isAdmin,
   });
 
   const { data: profile } = useQuery({
     queryKey: ["my-profile"],
     queryFn: settingsApi.getProfile,
-  });
-
-  const { data: staff } = useQuery({
-    queryKey: ["clinic-staff"],
-    queryFn: settingsApi.getStaff,
-    enabled: isAdmin,
   });
 
   // Mutations
@@ -62,14 +55,12 @@ const SettingsPage: React.FC = () => {
     },
   });
 
-  const [showAddStaff, setShowAddStaff] = useState(false);
-
   return (
     <div className="">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-slate-800">Settings</h1>
-          <p className="text-slate-500">
+          <p className="text-slate-500 mt-1">
             Manage your clinic, profile, and team permissions
           </p>
         </div>
@@ -77,16 +68,18 @@ const SettingsPage: React.FC = () => {
 
       {/* Tabs */}
       <div className="flex bg-slate-100 p-1 rounded-2xl w-fit">
-        <button
-          onClick={() => setActiveTab("clinic")}
-          className={`flex items-center px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
-            activeTab === "clinic"
-              ? "bg-white text-primary shadow-sm"
-              : "text-slate-500 hover:text-slate-700"
-          }`}
-        >
-          <Building2 size={18} className="mr-2" /> Clinic Profile
-        </button>
+        {isAdmin && (
+          <button
+            onClick={() => setActiveTab("clinic")}
+            className={`flex items-center px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
+              activeTab === "clinic"
+                ? "bg-white text-primary shadow-sm"
+                : "text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            <Building2 size={18} className="mr-2" /> Clinic Profile
+          </button>
+        )}
         <button
           onClick={() => setActiveTab("profile")}
           className={`flex items-center px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
@@ -97,18 +90,6 @@ const SettingsPage: React.FC = () => {
         >
           <User size={18} className="mr-2" /> Personal Profile
         </button>
-        {isAdmin && (
-          <button
-            onClick={() => setActiveTab("team")}
-            className={`flex items-center px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
-              activeTab === "team"
-                ? "bg-white text-primary shadow-sm"
-                : "text-slate-500 hover:text-slate-700"
-            }`}
-          >
-            <Users size={18} className="mr-2" /> Team Management
-          </button>
-        )}
       </div>
 
       <div className="grid grid-cols-1 gap-8">
@@ -116,7 +97,7 @@ const SettingsPage: React.FC = () => {
         {activeTab === "clinic" && clinic && (
           <Card
             title="Clinic Information"
-            description="Update your clinic's public presence"
+            // description="Update your clinic's public presence"
           >
             <form
               onSubmit={(e) => {
@@ -133,7 +114,7 @@ const SettingsPage: React.FC = () => {
               }}
               className="space-y-6"
             >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <Input
                   label="Clinic Name"
                   name="clinicName"
@@ -184,7 +165,7 @@ const SettingsPage: React.FC = () => {
         {activeTab === "profile" && profile && (
           <Card
             title="My Profile"
-            description="Update your professional credentials"
+            // description="Update your professional credentials"
           >
             <form
               onSubmit={(e) => {
@@ -200,7 +181,7 @@ const SettingsPage: React.FC = () => {
               }}
               className="space-y-6"
             >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <Input
                   label="Full Name"
                   name="fullName"
@@ -236,19 +217,74 @@ const SettingsPage: React.FC = () => {
                     placeholder="e.g. MBBS, MD"
                   />
                 </div>
-                <div className="md:col-span-2 p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center">
-                  <ShieldCheck className="text-primary mr-3" size={20} />
-                  <div>
-                    <p className="text-xs font-bold text-slate-700 uppercase">
-                      System Role
-                    </p>
-                    <p className="text-sm text-slate-500 font-medium">
-                      {profile.role}
+
+                <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center">
+                    <ShieldCheck className="text-primary mr-3" size={20} />
+                    <div>
+                      <p className="text-xs font-bold text-slate-700 uppercase">
+                        System Role
+                      </p>
+                      <p className="text-sm text-slate-500 font-medium">
+                        {profile.role}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center">
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center mr-3 ${profile.isActive ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"}`}
+                    >
+                      <ShieldCheck size={16} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-700 uppercase">
+                        Account Status
+                      </p>
+                      <p className="text-sm text-slate-500 font-medium">
+                        {profile.isActive ? "Active" : "Deactivated"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {profile.renewalDueDate && (
+                    <div
+                      className={`p-3 rounded-xl border flex items-center ${new Date(profile.renewalDueDate) < new Date() ? "bg-red-50 border-red-200" : "bg-slate-50 border-slate-200"}`}
+                    >
+                      <div
+                        className={`w-8 h-8 rounded-full flex items-center justify-center mr-3 ${new Date(profile.renewalDueDate) < new Date() ? "bg-red-100 text-red-600" : "bg-primary/10 text-primary"}`}
+                      >
+                        <Save size={16} />
+                      </div>
+                      <div>
+                        <p
+                          className={`text-xs font-bold uppercase ${new Date(profile.renewalDueDate) < new Date() ? "text-red-700" : "text-slate-700"}`}
+                        >
+                          Renewal Due
+                        </p>
+                        <p
+                          className={`text-sm font-medium ${new Date(profile.renewalDueDate) < new Date() ? "text-red-600" : "text-slate-500"}`}
+                        >
+                          {new Date(
+                            profile.renewalDueDate,
+                          ).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {profile.createdAt && (
+                  <div className="md:col-span-3 flex justify-center">
+                    <p className="text-[10px] text-slate-400 font-bold uppercase">
+                      Account created on{" "}
+                      {new Date(profile.createdAt).toLocaleDateString()}
                     </p>
                   </div>
-                </div>
+                )}
               </div>
               <div className="flex justify-end pt-4 border-t border-slate-100">
+                {" "}
                 <Button
                   type="submit"
                   isLoading={updateProfileMutation.isPending}
@@ -259,135 +295,6 @@ const SettingsPage: React.FC = () => {
               </div>
             </form>
           </Card>
-        )}
-
-        {/* Team Management */}
-        {activeTab === "team" && isAdmin && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between px-2">
-              <h3 className="text-xl font-bold text-slate-800">Clinic Staff</h3>
-              <Button onClick={() => setShowAddStaff(true)} size="sm">
-                <Plus size={18} className="mr-2" /> Add Staff
-              </Button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {staff?.map((member) => (
-                <div
-                  key={member.id}
-                  className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all"
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-bold text-lg">
-                      {member.fullName.charAt(0)}
-                    </div>
-                    <span
-                      className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase ${
-                        member.role === "Doctor"
-                          ? "bg-blue-100 text-blue-600"
-                          : "bg-slate-100 text-slate-600"
-                      }`}
-                    >
-                      {member.role}
-                    </span>
-                  </div>
-                  <h4 className="font-extrabold text-slate-800 mb-1">
-                    {member.fullName}
-                  </h4>
-                  <p className="text-xs text-slate-500 flex items-center mb-1">
-                    <Mail size={12} className="mr-1.5" /> {member.email}
-                  </p>
-                  {member.phoneNumber && (
-                    <p className="text-xs text-slate-500 flex items-center">
-                      <Phone size={12} className="mr-1.5" />{" "}
-                      {member.phoneNumber}
-                    </p>
-                  )}
-                  {member.specialization && (
-                    <p className="mt-3 text-[10px] text-primary font-bold uppercase">
-                      {member.specialization}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            {/* Add Staff Modal (Simplified) */}
-            {showAddStaff && (
-              <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                <div className="bg-white rounded-[2rem] w-full max-w-lg p-8 shadow-2xl animate-in zoom-in-95 duration-200">
-                  <h2 className="text-2xl font-extrabold text-slate-900 mb-6">
-                    Add Staff Member
-                  </h2>
-                  <form
-                    onSubmit={async (e) => {
-                      e.preventDefault();
-                      const formData = new FormData(e.currentTarget);
-                      try {
-                        await settingsApi.createStaff({
-                          fullName: formData.get("fullName"),
-                          email: formData.get("email"),
-                          password: formData.get("password"),
-                          role: formData.get("role"),
-                          phoneNumber: formData.get("phone"),
-                        });
-                        queryClient.invalidateQueries({
-                          queryKey: ["clinic-staff"],
-                        });
-                        setShowAddStaff(false);
-                      } catch (err: any) {
-                        toast.error(
-                          err.response?.data?.message || "Failed to add staff",
-                        );
-                      }
-                    }}
-                    className="space-y-4"
-                  >
-                    <Input label="Full Name" name="fullName" required />
-                    <Input
-                      label="Email Address"
-                      name="email"
-                      type="email"
-                      required
-                    />
-                    <Input
-                      label="Temporary Password"
-                      name="password"
-                      type="password"
-                      required
-                    />
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-2">
-                        Role
-                      </label>
-                      <select
-                        name="role"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-800 focus:ring-2 focus:ring-primary/20 outline-none"
-                      >
-                        <option value="Staff">Staff / Receptionist</option>
-                        <option value="Nurse">Nurse</option>
-                        <option value="Doctor">Doctor</option>
-                      </select>
-                    </div>
-                    <Input label="Phone" name="phone" />
-                    <div className="flex gap-4 pt-6">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="flex-1"
-                        onClick={() => setShowAddStaff(false)}
-                      >
-                        Cancel
-                      </Button>
-                      <Button type="submit" className="flex-1">
-                        Create Account
-                      </Button>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            )}
-          </div>
         )}
       </div>
     </div>

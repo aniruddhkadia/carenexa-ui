@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   User,
   Calendar,
@@ -17,6 +17,7 @@ import {
   Pill,
   Activity,
   Eye,
+  Trash2,
 } from "lucide-react";
 import Button from "../../components/common/Button";
 import Card from "../../components/common/Card";
@@ -25,6 +26,13 @@ import ViewMedicalRecordModal from "../medical-records/ViewMedicalRecordModal";
 import MedicineHistoryTable from "../medical-records/components/MedicineHistoryTable";
 import { type MedicalRecordDto } from "../medical-records/medicalRecords.api";
 import PatientRegistrationForm from "./PatientRegistrationForm";
+import {
+  appointmentsApi,
+  type AppointmentDto,
+} from "../appointments/appointments.api";
+import toast from "react-hot-toast";
+import { confirmToast } from "../../utils/toast";
+import { parseApiDate } from "../../utils/dateUtils";
 
 interface PatientProfile {
   id: string;
@@ -76,6 +84,32 @@ const PatientProfilePage: React.FC = () => {
     },
     enabled: !!id && (activeTab === "history" || activeTab === "medications"),
   });
+
+  const { data: appointments, isLoading: isAppointmentsLoading } = useQuery<
+    AppointmentDto[]
+  >({
+    queryKey: ["patient-appointments", id],
+    queryFn: () => appointmentsApi.getByPatient(id!),
+    enabled: !!id && activeTab === "appointments",
+  });
+
+  const queryClient = useQueryClient();
+
+  const deleteAppointmentMutation = useMutation({
+    mutationFn: async (appointmentId: string) => {
+      await api.delete(`/appointments/${appointmentId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["patient-appointments", id] });
+      toast.success("Appointment cancelled successfully");
+    },
+  });
+
+  const handleDeleteAppointment = (appointmentId: string) => {
+    confirmToast("Are you sure you want to cancel this appointment?", () => {
+      deleteAppointmentMutation.mutate(appointmentId);
+    });
+  };
 
   if (isPatientLoading) {
     return (
@@ -276,14 +310,13 @@ const PatientProfilePage: React.FC = () => {
                             </div>
                             <div>
                               <p className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-tight">
-                                {new Date(visit.createdAt).toLocaleDateString(
-                                  undefined,
-                                  {
-                                    day: "numeric",
-                                    month: "short",
-                                    year: "numeric",
-                                  },
-                                )}
+                                {parseApiDate(
+                                  visit.createdAt,
+                                ).toLocaleDateString(undefined, {
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "numeric",
+                                })}
                               </p>
                               <p className="text-[10px] text-slate-500 font-bold uppercase">
                                 Consulation with {visit.doctorName}
@@ -348,10 +381,104 @@ const PatientProfilePage: React.FC = () => {
               </div>
             )}
             {activeTab === "appointments" && (
-              <div className="bg-white dark:bg-slate-800 p-10 rounded-3xl border border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center text-slate-400">
-                <Calendar size={48} className="mb-4 opacity-20" />
-                <p className="font-bold">No upcoming appointments.</p>
-                <Button className="mt-4 rounded-xl">Book Appointment</Button>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                  <h4 className="font-bold text-slate-800 dark:text-white">
+                    Scheduled Sessions
+                  </h4>
+                  <Button
+                    size="sm"
+                    className="rounded-xl"
+                    onClick={() => navigate("/appointments")}
+                  >
+                    <Plus size={16} className="mr-2" />
+                    Book New
+                  </Button>
+                </div>
+                {isAppointmentsLoading ? (
+                  <div className="space-y-4">
+                    {[1, 2].map((i) => (
+                      <div
+                        key={i}
+                        className="h-24 bg-slate-100 dark:bg-slate-800 rounded-3xl animate-pulse"
+                      />
+                    ))}
+                  </div>
+                ) : appointments?.length === 0 ? (
+                  <div className="bg-white dark:bg-slate-800 p-10 rounded-3xl border border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center text-slate-400">
+                    <Calendar size={48} className="mb-4 opacity-20" />
+                    <p className="font-bold">No upcoming appointments.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {appointments?.map((app) => (
+                      <div
+                        key={app.id}
+                        className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-between"
+                      >
+                        <div className="flex items-center space-x-4">
+                          <div className="p-3 bg-primary/10 rounded-xl text-primary font-bold text-center min-w-[60px]">
+                            <p className="text-[10px] uppercase leading-none mb-1">
+                              {parseApiDate(
+                                app.appointmentDate,
+                              ).toLocaleDateString(undefined, {
+                                month: "short",
+                              })}
+                            </p>
+                            <p className="text-lg leading-none">
+                              {parseApiDate(app.appointmentDate).getDate()}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-900 dark:text-white uppercase tracking-tight">
+                              {app.type}
+                            </p>
+                            <p className="text-xs text-slate-500 font-medium">
+                              {parseApiDate(
+                                app.appointmentDate,
+                              ).toLocaleTimeString(undefined, {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                              {" • "}
+                              <span
+                                className={`
+                                  font-bold uppercase tracking-widest text-[10px]
+                                  ${
+                                    app.status === "Completed"
+                                      ? "text-emerald-500"
+                                      : app.status === "Cancelled"
+                                        ? "text-rose-500"
+                                        : "text-blue-500"
+                                  }
+                                `}
+                              >
+                                {app.status}
+                              </span>
+                            </p>
+                            {app.notes && (
+                              <p className="text-xs text-slate-400 mt-1 italic">
+                                "{app.notes}"
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {app.status === "Booked" && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-rose-500 hover:bg-rose-50 rounded-xl"
+                              onClick={() => handleDeleteAppointment(app.id)}
+                            >
+                              <Trash2 size={16} />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
             {activeTab === "billing" && (
@@ -378,7 +505,7 @@ const PatientProfilePage: React.FC = () => {
 
       {isEditing && (
         <div className="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-2xl bg-white dark:bg-slate-800 rounded-3xl overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto">
+          <div className="w-full max-w-2xl bg-white dark:bg-slate-800 rounded-xl overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto">
             <PatientRegistrationForm
               patientId={id}
               onSuccess={() => {

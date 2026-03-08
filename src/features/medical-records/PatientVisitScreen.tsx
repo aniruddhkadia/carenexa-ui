@@ -24,6 +24,7 @@ import { format, addDays } from "date-fns";
 import api from "../../lib/axios";
 import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import { promptToast } from "../../utils/toast";
 
 const ADVICE_SHORTCUTS = [
   "Drink plenty of fluids",
@@ -72,9 +73,6 @@ const PatientVisitScreen: React.FC = () => {
   const [prescriptions, setPrescriptions] = useState<any[]>([]);
   const autoSaveTimerRef = useRef<any>(null);
 
-  const [showTemplateModal, setShowTemplateModal] = useState(false);
-  const [templateNameInput, setTemplateNameInput] = useState("");
-
   useEffect(() => {
     if (targetPatientId) {
       loadPatientData();
@@ -119,33 +117,33 @@ const PatientVisitScreen: React.FC = () => {
   }, [formData, prescriptions]);
 
   const handleSaveAsTemplate = () => {
-    setTemplateNameInput("");
-    setShowTemplateModal(true);
-  };
+    promptToast(
+      "Enter a name for this template so you can reuse it later.",
+      "e.g. Standard Viral Fever",
+      async (name) => {
+        if (!name) {
+          toast.error("Template name is required.");
+          return;
+        }
 
-  const submitTemplate = async () => {
-    if (!templateNameInput) {
-      toast.error("Template name is required.");
-      return;
-    }
-
-    try {
-      setLoading(true);
-      await medicalRecordsApi.createTemplate({
-        templateName: templateNameInput,
-        diagnosis: formData.diagnosis,
-        advice: formData.advice,
-        prescriptionJson: JSON.stringify(prescriptions),
-      });
-      toast.success("Template saved successfully!");
-      setShowTemplateModal(false);
-      loadTemplates();
-    } catch (e) {
-      console.error(e);
-      toast.error("Failed to save template");
-    } finally {
-      setLoading(false);
-    }
+        try {
+          setLoading(true);
+          await medicalRecordsApi.createTemplate({
+            templateName: name,
+            diagnosis: formData.diagnosis,
+            advice: formData.advice,
+            prescriptionJson: JSON.stringify(prescriptions),
+          });
+          toast.success("Template saved successfully!");
+          loadTemplates();
+        } catch (e) {
+          console.error(e);
+          toast.error("Failed to save template");
+        } finally {
+          setLoading(false);
+        }
+      },
+    );
   };
 
   const loadPatientData = async () => {
@@ -634,7 +632,7 @@ const PatientVisitScreen: React.FC = () => {
       </div>
 
       {/* Right Pane - Visit History Sidebar */}
-      <div className="w-80 flex flex-col gap-6 overflow-y-auto hidden xl:flex print:hidden">
+      <div className="w-85 flex flex-col gap-6 overflow-y-auto hidden xl:flex print:hidden">
         <div className="flex flex-col gap-6">
           <MedicineHistoryTable
             history={history}
@@ -686,49 +684,6 @@ const PatientVisitScreen: React.FC = () => {
           </Card>
         </div>
       </div>
-
-      {showTemplateModal && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl animate-in zoom-in-95 duration-200">
-            <h3 className="text-lg font-bold text-slate-900 mb-2">
-              Save as Template
-            </h3>
-            <p className="text-sm text-slate-500 mb-4">
-              Enter a name for this template so you can reuse it later.
-            </p>
-            <input
-              type="text"
-              autoFocus
-              placeholder="e.g. Standard Viral Fever"
-              className="w-full px-4 py-2 border border-slate-300 rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary mb-6"
-              value={templateNameInput}
-              onChange={(e) => setTemplateNameInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  submitTemplate();
-                }
-              }}
-            />
-            <div className="flex justify-end gap-3">
-              <Button
-                variant="outline"
-                onClick={() => setShowTemplateModal(false)}
-                className="rounded-xl"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={submitTemplate}
-                disabled={loading}
-                className="rounded-xl"
-              >
-                {loading ? "Saving..." : "Save Template"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

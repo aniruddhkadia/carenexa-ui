@@ -37,19 +37,19 @@ const MainLayout: React.FC = () => {
       icon: <Home className="w-5 h-5" />,
       label: "Dashboard",
       path: "/dashboard",
-      roles: ["All"],
+      roles: ["Doctor", "Nurse", "Staff", "Admin", "SuperAdmin", "Insurance"],
     },
     {
       icon: <Users className="w-5 h-5" />,
       label: "Patients",
       path: "/patients",
-      roles: ["Doctor", "Nurse", "Admin", "SuperAdmin"],
+      roles: ["Doctor", "Nurse", "Staff", "Admin", "SuperAdmin"],
     },
     {
       icon: <Calendar className="w-5 h-5" />,
       label: "Appointments",
       path: "/appointments",
-      roles: ["Doctor", "Nurse", "Admin", "SuperAdmin"],
+      roles: ["Doctor", "Nurse", "Staff", "Admin", "SuperAdmin"],
     },
     {
       icon: <FileText className="w-5 h-5" />,
@@ -63,30 +63,34 @@ const MainLayout: React.FC = () => {
       path: "/medicines",
       roles: ["Doctor", "Nurse", "Admin", "SuperAdmin"],
     },
-    {
-      icon: <CreditCard className="w-5 h-5" />,
-      label: "Billing",
-      path: "/billing",
-      roles: ["Admin", "Doctor", "SuperAdmin"],
-    },
-    {
-      icon: <ShieldCheck className="w-5 h-5" />,
-      label: "Insurance",
-      path: "/insurance",
-      roles: ["Admin", "Insurance", "SuperAdmin"],
-    },
+    // {
+    //   icon: <CreditCard className="w-5 h-5" />,
+    //   label: "Billing",
+    //   path: "/billing",
+    //   roles: ["Admin", "SuperAdmin", "Staff"],
+    // },
+    // {
+    //   icon: <ShieldCheck className="w-5 h-5" />,
+    //   label: "Insurance",
+    //   path: "/insurance",
+    //   roles: ["Admin", "Insurance", "SuperAdmin"],
+    // },
     {
       icon: <Settings className="w-5 h-5" />,
       label: "Settings",
       path: "/settings",
-      roles: ["All"],
+      roles: ["Doctor", "Nurse", "Staff", "Admin", "SuperAdmin"],
+    },
+    {
+      icon: <Users className="w-5 h-5" />,
+      label: "Staff",
+      path: "/team",
+      roles: ["SuperAdmin"],
     },
   ];
 
   const filteredNavItems = navItems.filter(
-    (item) =>
-      item.roles.includes("All") ||
-      (user?.role && item.roles.includes(user.role)),
+    (item) => user?.role && item.roles.includes(user.role),
   );
 
   return (
@@ -103,15 +107,20 @@ const MainLayout: React.FC = () => {
       <aside
         className={`
         fixed md:relative z-30 transition-all duration-300 ease-in-out
-        ${isSidebarOpen ? "w-64 translate-x-0" : "w-20 -translate-x-full md:translate-x-0"}
+        ${isSidebarOpen ? "w-50 translate-x-0" : "w-20 -translate-x-full md:translate-x-0"}
         bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col h-full
       `}
       >
-        <div className="h-16 flex items-center justify-between px-6 border-b border-slate-200 dark:border-slate-700">
+        <div className="h-16 flex items-center justify-between px-2 border-b border-slate-200 dark:border-slate-700">
           <span
             className={`text-xl font-bold text-primary ${!isSidebarOpen && "md:hidden"}`}
           >
-            Carenexa
+            <img
+              src="../../public/AroviaLogo.svg"
+              alt="Arovia"
+              className="h-24 pe-2"
+            />
+            {/* Arovia */}
           </span>
           {isSidebarOpen ? (
             <button
@@ -202,7 +211,7 @@ const MainLayout: React.FC = () => {
           <div className="flex items-center ml-4 space-x-3">
             <div className="hidden sm:block text-right mr-2">
               <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                {clinic?.clinicName || "Carenexa Clinic"}
+                {clinic?.clinicName || "Arovia Clinic"}
               </p>
               <p className="text-[10px] text-slate-500 uppercase tracking-tighter">
                 {clinic?.city || "Healthcare Provider"}

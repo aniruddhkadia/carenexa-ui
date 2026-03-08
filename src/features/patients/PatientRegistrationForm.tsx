@@ -144,7 +144,7 @@ const PatientRegistrationForm: React.FC<PatientRegistrationFormProps> = ({
           : "Enter the patient's personal and medical information"
       }
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Input
             label="First Name *"

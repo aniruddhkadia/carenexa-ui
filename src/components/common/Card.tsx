@@ -17,10 +17,10 @@ const Card: React.FC<CardProps> = ({
 }) => {
   return (
     <div
-      className={`bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden ${className}`}
+      className={`bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden ${className}`}
     >
       {(title || description) && (
-        <div className="p-4 pb-2">
+        <div className="pb-2 mb-2 border-b border-slate-100">
           {title && (
             <h3 className="text-lg font-semibold leading-none tracking-tight">
               {title}
@@ -33,9 +33,9 @@ const Card: React.FC<CardProps> = ({
           )}
         </div>
       )}
-      <div className="p-4 pt-0">{children}</div>
+      <div className="pt-0">{children}</div>
       {footer && (
-        <div className="p-4 pt-0 flex items-center border-t border-slate-100 dark:border-slate-700 pt-4 mt-2">
+        <div className="pt-0 flex items-center border-t border-slate-100 dark:border-slate-700 pt-4 mt-2">
           {footer}
         </div>
       )}

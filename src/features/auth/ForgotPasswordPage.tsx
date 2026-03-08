@@ -72,7 +72,7 @@ const ForgotPasswordPage: React.FC = () => {
       <div className="max-w-md w-full">
         <div className="text-center mb-10">
           <h1 className="text-4xl font-extrabold text-primary mb-2">
-            Carenexa
+            Arovia
           </h1>
           <p className="text-slate-500">Secure Healthcare Access</p>
         </div>

@@ -93,7 +93,9 @@ const AppointmentCalendar: React.FC = () => {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-2xl font-bold text-slate-800">Appointments</h2>
-          <p className="text-slate-500">Manage your daily clinic schedule</p>
+          <p className="text-slate-500 mt-1">
+            Manage your daily clinic schedule
+          </p>
         </div>
         <Button onClick={() => setIsModalOpen(true)}>+ Add Appointment</Button>
       </div>

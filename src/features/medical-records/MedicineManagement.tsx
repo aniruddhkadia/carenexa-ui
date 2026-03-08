@@ -13,7 +13,10 @@ import api from "../../lib/axios";
 import Button from "../../components/common/Button";
 import Card from "../../components/common/Card";
 import toast from "react-hot-toast";
+import { confirmToast } from "../../utils/toast";
 import { format } from "date-fns";
+import Pagination from "../../components/common/Pagination";
+import { useAuth } from "../auth/AuthContext";
 
 interface Medicine {
   id: string;
@@ -26,6 +29,7 @@ interface Medicine {
 }
 
 const MedicineManagement: React.FC = () => {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
@@ -40,13 +44,35 @@ const MedicineManagement: React.FC = () => {
     isActive: true,
   });
 
-  const { data: medicines, isLoading } = useQuery<Medicine[]>({
-    queryKey: ["medicines", searchTerm],
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  const { data, isLoading, isError, error } = useQuery<{
+    items: Medicine[];
+    totalCount: number;
+  }>({
+    queryKey: ["medicines", page, pageSize, searchTerm],
     queryFn: async () => {
-      const { data } = await api.get(`/medicines/search?q=${searchTerm || ""}`);
+      const { data } = await api.get(
+        `/medicines/search?q=${searchTerm || ""}&page=${page}&pageSize=${pageSize}`,
+      );
       return data;
     },
   });
+
+  const rawItems = data?.items || (data as any)?.Items || [];
+  const medicines = rawItems.map((item: any) => ({
+    id: item.id || item.Id,
+    brandName: item.brandName || item.BrandName,
+    genericName: item.genericName || item.GenericName,
+    strength: item.strength || item.Strength,
+    form: item.form || item.Form,
+    isActive: item.isActive !== undefined ? item.isActive : item.IsActive,
+    createdAt: item.createdAt || item.CreatedAt,
+  })) as Medicine[];
+
+  const totalCount = data?.totalCount || (data as any)?.TotalCount || 0;
+  const totalPages = Math.ceil(totalCount / pageSize);
 
   const createMutation = useMutation({
     mutationFn: async (newData: any) => {
@@ -95,6 +121,13 @@ const MedicineManagement: React.FC = () => {
     setEditingMedicine(null);
   };
 
+  const [showSearchTerm, setShowSearchTerm] = useState(searchTerm);
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    setPage(1);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (editingMedicine) {
@@ -118,9 +151,9 @@ const MedicineManagement: React.FC = () => {
   };
 
   const handleDelete = (id: string) => {
-    if (window.confirm("Are you sure you want to delete this medicine?")) {
+    confirmToast("Are you sure you want to delete this medicine?", () => {
       deleteMutation.mutate(id);
-    }
+    });
   };
 
   return (
@@ -130,7 +163,7 @@ const MedicineManagement: React.FC = () => {
           <h2 className="text-2xl font-bold text-slate-800">
             Medicine Catalog
           </h2>
-          <p className="text-slate-500 text-sm font-medium">
+          <p className="text-slate-500 mt-1">
             Manage available medications for prescription
           </p>
         </div>
@@ -151,7 +184,7 @@ const MedicineManagement: React.FC = () => {
               placeholder="Search by brand or generic name..."
               className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={handleSearchChange}
             />
           </div>
         </div>
@@ -173,16 +206,26 @@ const MedicineManagement: React.FC = () => {
               {isLoading ? (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={7}
                     className="px-6 py-10 text-center animate-pulse text-slate-400"
                   >
                     Loading catalog...
                   </td>
                 </tr>
+              ) : isError ? (
+                <tr>
+                  <td
+                    colSpan={7}
+                    className="px-6 py-10 text-center text-rose-500 font-medium"
+                  >
+                    Error loading catalog:{" "}
+                    {(error as any)?.message || "Unknown error"}
+                  </td>
+                </tr>
               ) : medicines?.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={7}
                     className="px-6 py-10 text-center text-slate-400 font-medium"
                   >
                     No medicines found.
@@ -218,7 +261,8 @@ const MedicineManagement: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-slate-500 text-xs font-medium">
-                      {med.createdAt
+                      {med.createdAt &&
+                      !isNaN(new Date(med.createdAt).getTime())
                         ? format(new Date(med.createdAt), "dd MMM yyyy")
                         : "N/A"}
                     </td>
@@ -235,20 +279,24 @@ const MedicineManagement: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-2">
-                        <button
-                          onClick={() => handleEdit(med)}
-                          className="w-9 h-9 flex items-center justify-center border border-slate-200 rounded-xl text-slate-500 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50 transition-all"
-                          title="Edit"
-                        >
-                          <Edit2 size={10} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(med.id)}
-                          className="w-9 h-9 flex items-center justify-center border border-slate-200 rounded-xl text-slate-500 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 transition-all"
-                          title="Delete"
-                        >
-                          <Trash2 size={10} />
-                        </button>
+                        {user?.role !== "Doctor" && (
+                          <>
+                            <button
+                              onClick={() => handleEdit(med)}
+                              className="w-9 h-9 flex items-center justify-center border border-slate-200 rounded-xl text-slate-500 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50 transition-all"
+                              title="Edit"
+                            >
+                              <Edit2 size={10} />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(med.id)}
+                              className="w-9 h-9 flex items-center justify-center border border-slate-200 rounded-xl text-slate-500 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 transition-all"
+                              title="Delete"
+                            >
+                              <Trash2 size={10} />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -257,12 +305,25 @@ const MedicineManagement: React.FC = () => {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination UI */}
+        <Pagination
+          currentPage={page}
+          totalPages={totalPages}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          onPageChange={setPage}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setPage(1);
+          }}
+        />
       </Card>
 
       {showAddModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <Card className="w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl animate-in zoom-in-95">
-            <h3 className="text-xl font-bold text-slate-900 mb-4 tracking-tight">
+          <Card className="w-full max-w-md bg-white rounded-3xl p-4 shadow-2xl animate-in zoom-in-95">
+            <h3 className="text-xl font-bold text-slate-900 mb-2 tracking-tight">
               {editingMedicine ? "Edit Medicine" : "Add New Medicine"}
             </h3>
             <form onSubmit={handleSubmit} className="space-y-4">

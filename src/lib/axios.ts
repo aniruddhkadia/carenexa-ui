@@ -10,7 +10,7 @@ const api = axios.create({
 // Request interceptor to add token
 api.interceptors.request.use(
   (config) => {
-    const accessToken = localStorage.getItem("carenexa_access_token");
+    const accessToken = localStorage.getItem("arovia_access_token");
     if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`;
     }
@@ -37,8 +37,8 @@ api.interceptors.response.use(
     ) {
       originalRequest._retry = true;
       try {
-        const refreshToken = localStorage.getItem("carenexa_refresh_token");
-        const accessToken = localStorage.getItem("carenexa_access_token");
+        const refreshToken = localStorage.getItem("arovia_refresh_token");
+        const accessToken = localStorage.getItem("arovia_access_token");
         // Silent refresh call
         const response = await axios.post("/api/auth/refresh", {
           accessToken: accessToken || "",
@@ -48,13 +48,13 @@ api.interceptors.response.use(
         // Save the new tokens
         if (response.data.accessToken) {
           localStorage.setItem(
-            "carenexa_access_token",
+            "arovia_access_token",
             response.data.accessToken,
           );
         }
         if (response.data.refreshToken) {
           localStorage.setItem(
-            "carenexa_refresh_token",
+            "arovia_refresh_token",
             response.data.refreshToken,
           );
         }
@@ -64,9 +64,9 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (refreshError) {
         // Clear storage and redirect to login
-        localStorage.removeItem("carenexa_user");
-        localStorage.removeItem("carenexa_access_token");
-        localStorage.removeItem("carenexa_refresh_token");
+        localStorage.removeItem("arovia_user");
+        localStorage.removeItem("arovia_access_token");
+        localStorage.removeItem("arovia_refresh_token");
         window.location.href = "/login";
         return Promise.reject(refreshError);
       }
